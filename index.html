@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Learning Plan | ระบบจัดการแผนการเรียนรู้อัจฉริยะ</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
+                        heading: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: '#2563eb',
+                        brandHover: '#1d4ed8',
+                        darkBg: '#0f172a',
+                        darkHeader: '#1e293b',
+                        word: '#2563eb',
+                        pdf: '#16a34a',
+                        print: '#1f2937'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        body { background-color: #0f172a; }
+        .white-panel {
+            background: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .input-modern {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+        .input-modern:focus {
+            background: #ffffff;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+        
+        /* Flashcard Animations */
+        .flashcard-content {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tab-btn.active {
+            background-color: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+        .tab-btn.active svg { color: white; }
+
+        /* Print Styles */
+        @media print {
+            body { background: white !important; padding: 0 !important; margin: 0 !important; }
+            @page { size: A4; margin: 15mm 20mm; }
+            #loginPage, #dashboardPage > header, #configSection, #flashcardInterface { display: none !important; }
+            #exportableArea { display: block !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
+            * { color: black !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .print-break-before { page-break-before: always; }
+            .avoid-break { page-break-inside: avoid; }
+            h4 { page-break-after: avoid; }
+        }
+    </style>
+</head>
+<body class="text-slate-300 antialiased min-h-screen flex flex-col">
+
+    <!-- 1. หน้า Login -->
+    <div id="loginPage" class="min-h-screen flex items-center justify-center p-4 relative z-10">
+        <div class="white-panel p-10 w-full max-w-md text-center text-slate-800">
+            <div class="mx-auto bg-brand w-20 h-20 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+                </svg>
+            </div>
+            <h2 class="text-3xl font-heading font-bold mb-1 text-slate-900">Smart Learning Plan</h2>
+            <p class="text-sm text-slate-500 mb-8 font-medium">เข้าสู่ระบบเพื่อสร้างแผนการสอนอัจฉริยะ</p>
+            
+            <div class="space-y-5">
+                <input type="text" placeholder="อีเมล / รหัสบุคลากร" class="w-full p-4 rounded-xl input-modern outline-none text-slate-700">
+                <input type="password" placeholder="รหัสผ่าน" class="w-full p-4 rounded-xl input-modern outline-none text-slate-700">
+                <button onclick="login()" class="w-full bg-brand hover:bg-brandHover text-white font-bold p-4 rounded-xl mt-2 text-lg shadow-md transition-colors">
+                    เข้าสู่ระบบ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. หน้า Dashboard -->
+    <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
+        <header class="bg-darkHeader border-b border-slate-700 py-4 px-6 flex justify-between items-center z-20">
+            <div class="flex items-center gap-4">
+                <div class="bg-brand p-2 rounded-lg text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z" /></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-heading font-bold text-white leading-tight">Smart Learning Plan</h1>
+                    <p class="text-xs text-slate-400">ระบบสร้างแผนการสอนแบบแฟลชการ์ดคุณภาพสูง</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-grow p-4 lg:p-6 max-w-7xl mx-auto w-full space-y-6">
+            
+            <!-- ส่วนตั้งค่าพารามิเตอร์ -->
+            <div id="configSection" class="white-panel p-6 text-slate-800">
+                <h3 class="text-lg font-heading font-bold mb-4 flex items-center gap-2">
+                    <div class="w-2 h-6 bg-brand rounded-full"></div>
+                    กำหนดข้อมูลรายวิชา (กรอกข้อมูลเพื่อประมวลผล)
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase block mb-1">รหัสวิชา</label>
+                        <input type="text" id="subjectCode" value="20000-1301" class="w-full p-3 rounded-xl input-modern text-sm font-medium">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase block mb-1">ชื่อรายวิชา</label>
+                        <input type="text" id="subjectName" value="วิทยาศาสตร์เพื่อพัฒนาทักษะชีวิต" class="w-full p-3 rounded-xl input-modern text-sm font-medium">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase block mb-1">ชื่อหน่วยการเรียนรู้</label>
+                        <input type="text" id="unitName" value="1. กระบวนการทางวิทยาศาสตร์และทักษะการแก้ปัญหา" class="w-full p-3 rounded-xl input-modern text-sm font-medium">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase block mb-1">จำนวนชั่วโมง</label>
+                        <input type="number" id="hours" value="4" class="w-full p-3 rounded-xl input-modern text-sm font-medium">
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button onclick="generateFlashcards()" class="bg-brand hover:bg-brandHover text-white px-8 py-3 rounded-xl font-bold shadow-md transition-colors">
+                        สร้างชุดแฟลชการ์ดและเอกสาร
+                    </button>
+                </div>
+            </div>
+
+            <!-- Flashcard UI -->
+            <div id="flashcardInterface" class="hidden">
+                <div class="flex flex-col lg:flex-row gap-6">
+                    
+                    <!-- เมนูเลือกการ์ด (Sidebar) -->
+                    <div class="lg:w-1/4 space-y-3">
+                        <button onclick="showCard(1)" id="tab-1" class="tab-btn w-full text-left p-4 rounded-xl border-2 border-slate-700 text-slate-300 hover:bg-slate-800 transition font-bold flex items-center gap-3">
+                            <span class="bg-slate-800 p-2 rounded-lg"><svg class="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></span>
+                            ส่วนที่ 1: แผนการสอน (10 ข้อ)
+                        </button>
+                        <button onclick="showCard(2)" id="tab-2" class="tab-btn w-full text-left p-4 rounded-xl border-2 border-slate-700 text-slate-300 hover:bg-slate-800 transition font-bold flex items-center gap-3">
+                            <span class="bg-slate-800 p-2 rounded-lg"><svg class="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477-4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg></span>
+                            ส่วนที่ 2: ใบความรู้
+                        </button>
+                        <button onclick="showCard(3)" id="tab-3" class="tab-btn w-full text-left p-4 rounded-xl border-2 border-slate-700 text-slate-300 hover:bg-slate-800 transition font-bold flex items-center gap-3">
+                            <span class="bg-slate-800 p-2 rounded-lg"><svg class="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span>
+                            ส่วนที่ 3: ใบงาน (10 ข้อ)
+                        </button>
+                        <button onclick="showCard(4)" id="tab-4" class="tab-btn w-full text-left p-4 rounded-xl border-2 border-slate-700 text-slate-300 hover:bg-slate-800 transition font-bold flex items-center gap-3">
+                            <span class="bg-slate-800 p-2 rounded-lg"><svg class="w-5 h-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg></span>
+                            ส่วนที่ 4: คิวอาร์โค้ด
+                        </button>
+                        <button onclick="showCard(5)" id="tab-5" class="tab-btn w-full text-left p-4 rounded-xl border-2 border-slate-700 text-slate-300 hover:bg-slate-800 transition font-bold flex items-center gap-3">
+                            <span class="bg-slate-800 p-2 rounded-lg"><svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></span>
+                            ส่วนที่ 5: ดาวน์โหลด & พิมพ์
+                        </button>
+                    </div>
+
+                    <!-- พื้นที่แสดงผลการ์ด -->
+                    <div class="lg:w-3/4 white-panel p-8 text-slate-800 overflow-y-auto max-h-[800px]">
+                        
+                        <!-- Card 1: Lesson Plan -->
+                        <div id="card-1" class="flashcard-content hidden">
+                            <div class="border-b-2 border-brand pb-3 mb-6">
+                                <h2 class="text-2xl font-heading font-bold text-slate-900">ส่วนที่ 1: แผนการจัดการเรียนรู้ฐานสมรรถนะ</h2>
+                            </div>
+                            <div id="display-plan" class="space-y-6 text-sm leading-relaxed">
+                                <!-- Generated Content Here -->
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Knowledge Sheet -->
+                        <div id="card-2" class="flashcard-content hidden">
+                            <div class="border-b-2 border-green-500 pb-3 mb-6">
+                                <h2 class="text-2xl font-heading font-bold text-slate-900">ส่วนที่ 2: ใบความรู้ (ทฤษฎีและการประยุกต์ใช้)</h2>
+                            </div>
+                            <div id="display-knowledge" class="space-y-6 text-sm">
+                                <!-- Generated Content Here -->
+                            </div>
+                        </div>
+
+                        <!-- Card 3: Worksheet -->
+                        <div id="card-3" class="flashcard-content hidden">
+                            <div class="border-b-2 border-orange-500 pb-3 mb-6">
+                                <h2 class="text-2xl font-heading font-bold text-slate-900">ส่วนที่ 3: ใบงาน (ประเมินผล 10 ข้อ)</h2>
+                            </div>
+                            <div id="display-worksheet" class="space-y-6 text-sm">
+                                <!-- Generated Content Here -->
+                            </div>
+                        </div>
+
+                        <!-- Card 4: QR Code -->
+                        <div id="card-4" class="flashcard-content hidden text-center py-10">
+                            <div class="border-b-2 border-purple-500 pb-3 mb-10 text-left">
+                                <h2 class="text-2xl font-heading font-bold text-slate-900">ส่วนที่ 4: คิวอาร์โค้ดสื่อการสอน</h2>
+                            </div>
+                            <h3 class="text-lg font-bold mb-6">สแกนเพื่อเข้าสู่บทเรียนออนไลน์และเอกสารอ้างอิง</h3>
+                            <div class="inline-block p-6 bg-white border-4 border-slate-100 rounded-2xl shadow-lg">
+                                <div id="display-qrcode-large"></div>
+                            </div>
+                            <p class="mt-6 text-slate-600 font-medium">รองรับการใช้งานผ่านสมาร์ทโฟนและแท็บเล็ตทุกระบบ</p>
+                        </div>
+
+                        <!-- Card 5: Export -->
+                        <div id="card-5" class="flashcard-content hidden text-center py-10">
+                            <div class="border-b-2 border-red-500 pb-3 mb-10 text-left">
+                                <h2 class="text-2xl font-heading font-bold text-slate-900">ส่วนที่ 5: ส่งออกและจัดพิมพ์</h2>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+                                <button onclick="exportWord()" class="border border-slate-200 hover:border-blue-400 hover:shadow-lg rounded-2xl p-6 flex flex-col items-center gap-4 bg-blue-50/50 transition-all">
+                                    <div class="bg-word p-4 rounded-2xl text-white font-bold text-3xl font-heading w-20 h-20 flex items-center justify-center">W</div>
+                                    <h3 class="font-bold text-word text-lg">Word (.doc)</h3>
+                                </button>
+                                <button onclick="exportPDF()" class="border border-slate-200 hover:border-green-400 hover:shadow-lg rounded-2xl p-6 flex flex-col items-center gap-4 bg-green-50/50 transition-all">
+                                    <div class="bg-pdf p-4 rounded-2xl text-white font-bold text-2xl font-heading w-20 h-20 flex items-center justify-center">PDF</div>
+                                    <h3 class="font-bold text-pdf text-lg">PDF (.pdf)</h3>
+                                </button>
+                                <button onclick="window.print()" class="border border-slate-200 hover:border-gray-400 hover:shadow-lg rounded-2xl p-6 flex flex-col items-center gap-4 bg-slate-50/50 transition-all">
+                                    <div class="bg-print p-4 rounded-2xl text-white w-20 h-20 flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                    </div>
+                                    <h3 class="font-bold text-print text-lg">สั่งพิมพ์ (Print)</h3>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Export Container -->
+    <div id="exportableArea" class="hidden bg-white p-10 text-slate-900 text-[15px] leading-relaxed max-w-[210mm] mx-auto font-sans">
+        <!-- เนื้อหาจะถูกแทรกที่นี่ -->
+    </div>
+
+    <script>
+        function login() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('dashboardPage').classList.remove('hidden');
+        }
+
+        function generateFlashcards() {
+            const subjectCode = document.getElementById('subjectCode').value;
+            const subjectName = document.getElementById('subjectName').value;
+            const unitNameRaw = document.getElementById('unitName').value;
+            const hours = document.getElementById('hours').value;
+            const cleanTopic = unitNameRaw.replace(/^\d+\.?\s*/, '').trim();
+
+            document.getElementById('flashcardInterface').classList.remove('hidden');
+            
+            // ----------------------------------------------------
+            // Card 1: แผนการสอน (สมบูรณ์ 10 องค์ประกอบเชิงลึก)
+            // ----------------------------------------------------
+            const planContent = `
+                <div class="space-y-5 avoid-break">
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-3 bg-slate-50 p-5 rounded-lg border border-slate-200">
+                        <div><b>1. รหัสและชื่อวิชา:</b> ${subjectCode} ${subjectName}</div>
+                        <div><b>2. หัวข้อ/หน่วยการเรียนรู้:</b> ${unitNameRaw}</div>
+                        <div><b>3. เรื่องที่สอน:</b> ${cleanTopic}</div>
+                        <div><b>เวลาที่ใช้จัดการเรียนรู้:</b> ${hours} ชั่วโมง</div>
+                    </div>
+
+                    <div class="avoid-break">
+                        <h4 class="font-bold text-slate-800 border-l-4 border-brand pl-2 mb-2">4. สาระสำคัญ (Concept)</h4>
+                        <p class="indent-8 text-slate-700 text-justify">การศึกษาเรื่อง ${cleanTopic} ถือเป็นพื้นฐานสำคัญที่ผู้เรียนจำเป็นต้องมีความเข้าใจอย่างถ่องแท้ เพื่อนำไปประยุกต์ใช้ในการแก้ปัญหา ทั้งในเชิงวิชาการและการปฏิบัติงานในวิชาชีพ การจัดการเรียนรู้นี้มุ่งเน้นให้ผู้เรียนเข้าใจกระบวนการ วิเคราะห์ความสัมพันธ์ของข้อมูล สามารถออกแบบและวางแผนขั้นตอนการทำงานได้อย่างเป็นระบบ ซึ่งจะนำไปสู่การพัฒนาทักษะชีวิตและการลดข้อผิดพลาดในการทำงานจริง</p>
+                    </div>
+
+                    <div class="avoid-break">
+                        <h4 class="font-bold text-slate-800 border-l-4 border-brand pl-2 mb-2">5. สมรรถนะประจำหน่วย (Unit Competency)</h4>
+                        <ul class="list-disc pl-8 text-slate-700">
+                            <li>แสดงความรู้ ความเข้าใจในหลักการและทฤษฎีที่เกี่ยวข้องกับ ${cleanTopic}</li>
+                            <li>ประยุกต์ใช้ขั้นตอนของ ${cleanTopic} เพื่อวางแผนและแก้ปัญหาในสถานการณ์จำลองตามหลักวิชาการ</li>
+                            <li>ปฏิบัติงานด้วยความรอบคอบ ปลอดภัย และตระหนักถึงจรรยาบรรณวิชาชีพ</li>
+                        </ul>
+                    </div>
+
+                    <div class="avoid-break">
+                        <h4 class="font-bold text-slate-800 border-l-4 border-brand pl-2 mb-2">6. จุดประสงค์การเรียนรู้ (Learning Objectives)</h4>
+                        <div class="pl-4 space-y-2 text-slate-700">
+                            <p><b>6.1 ด้านความรู้ (Knowledge):</b></p>
+                            <ul class="list-disc pl-8 mb-2">
+                                <li>บอกความหมายและองค์ประกอบของ ${cleanTopic} ได้อย่างถูกต้อง (ระดับจำ/เข้าใจ)</li>
+                                <li>จำแนกขั้นตอนย่อยในกระบวนการทำงานได้อย่างเป็นลำดับ (ระดับวิเคราะห์)</li>
+                            </ul>
+                            <p><b>6.2 ด้านทักษะ/กระบวนการ (Skill):</b></p>
+                            <ul class="list-disc pl-8 mb-2">
+                                <li>ปฏิบัติการจำลองสถานการณ์และเลือกใช้เครื่องมือที่เกี่ยวข้องได้ถูกต้อง (ระดับนำไปใช้)</li>
+                                <li>เขียนสรุปรายงานและนำเสนอผลการแก้ปัญหาเชิงตรรกะได้ (ระดับสังเคราะห์)</li>
+                            </ul>
+                            <p><b>6.3 ด้านคุณลักษณะอันพึงประสงค์ (Attitude):</b></p>
+                            <ul class="list-disc pl-8">
+                                <li>แสดงออกถึงความมีวินัย ตรงต่อเวลา และมีความรับผิดชอบต่องานที่ได้รับมอบหมาย</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="avoid-break">
+                        <h4 class="font-bold text-slate-800 border-l-4 border-brand pl-2 mb-2">7. เนื้อหาสาระการเรียนรู้ (Content)</h4>
+                        <ul class="list-decimal pl-8 text-slate-700">
+                            <li>ความหมาย ความสำคัญ และแนวคิดพื้นฐานของ ${cleanTopic}</li>
+                            <li>องค์ประกอบที่สำคัญและตัวแปรที่ส่งผลกระทบต่อกระบวนการ</li>
+                            <li>ขั้นตอนการปฏิบัติงานอย่างเป็นระบบ (Systematic Approach)</li>
+                            <li>กรณีศึกษา (Case Study) การเกิดข้อผิดพลาดและการแก้ปัญหาที่ต้นเหตุ (Root Cause Analysis)</li>
+                        </ul>
+                    </div>
+
+                    <div class="avoid-break">
+                        <h4 class="font-bold text-slate-800 border-l-4 border-brand pl-2 mb-2">8. กิจกรรมการเรียนการสอน (แบบ MIAP Model)</h4>
+                        <div class="pl-4 space-y-3 text-slate-700 mt-2">
+                            <div><b>8.1 ขั้นนำเข้าสู่บทเรียน (Motivation - ${Math.floor(hours*60*0.1)} นาที):</b> 
+                            <p class="pl-6 mt-1">- ผู้สอนแจ้งจุดประสงค์การเรียนรู้ ทดสอบก่อนเรียน (Pre-test) <br>- กระตุ้นความสนใจโดยยกข่าวสารหรือปัญหาในปัจจุบันที่เกี่ยวข้องกับ ${cleanTopic} และตั้งคำถามปลายเปิดให้นักศึกษาร่วมกันระดมสมอง</p></div>
+                            
+                            <div><b>8.2 ขั้นให้ข้อมูล/เนื้อหา (Information - ${Math.floor(hours*60*0.3)} นาที):</b> 
+                            <p class="pl-6 mt-1">- ผู้สอนบรรยายเนื้อหาผ่านสื่อการสอน (PowerPoint/Video) พร้อมแจกใบความรู้ที่ 1 <br>- สาธิตขั้นตอนการวิเคราะห์ปัญหา และยกตัวอย่างกรณีศึกษาที่ประสบความสำเร็จ</p></div>
+                            
+                            <div><b>8.3 ขั้นพยายาม/ปฏิบัติ (Application - ${Math.floor(hours*60*0.4)} นาที):</b> 
+                            <p class="pl-6 mt-1">- แบ่งกลุ่มผู้เรียน 3-5 คน ทำกิจกรรมตามใบงานที่ 1 โดยให้โจทย์สถานการณ์จำลอง <br>- ผู้เรียนลงมือวิเคราะห์ ออกแบบวิธีแก้ปัญหา และบันทึกผล ผู้สอนทำหน้าที่เป็น Facilitator คอยให้คำแนะนำ</p></div>
+                            
+                            <div><b>8.4 ขั้นสำเร็จ/ประเมินผล (Progress - ${Math.floor(hours*60*0.2)} นาที):</b> 
+                            <p class="pl-6 mt-1">- ตัวแทนกลุ่มนำเสนอผลงาน แลกเปลี่ยนเรียนรู้ร่วมกัน <br>- ผู้สอนสรุปประเด็นสำคัญ (Wrap-up) เติมเต็มเนื้อหาที่ขาดหาย และทำแบบทดสอบหลังเรียน (Post-test)</p></div>
+                        </div>
+                    </div>
+
+                    <div class="avoid-break">
+                        <h4 class="font-bold text-slate-800 border-l-4 border-brand pl-2 mb-2">9. สื่อและแหล่งการเรียนรู้ (Media & Resources)</h4>
+                        <ul class="list-disc pl-8 text-slate-700">
+                            <li>หนังสือเรียน/เอกสารประกอบการสอนรายวิชา ${subjectName}</li>
+                            <li>สไลด์นำเสนอ (Presentation) และวิดีโอสาธิตกรณีศึกษา</li>
+                            <li>ใบความรู้และใบงานประจำหน่วย</li>
+                            <li>แหล่งเรียนรู้ออนไลน์ (สแกนผ่าน QR Code ท้ายบทเรียน)</li>
+                        </ul>
+                    </div>
+
+                    <div class="avoid-break">
+                        <h4 class="font-bold text-slate-800 border-l-4 border-brand pl-2 mb-2">10. การวัดและประเมินผล (Measurement & Evaluation)</h4>
+                        <table class="w-full mt-2 border-collapse border border-slate-300 text-sm">
+                            <tr class="bg-slate-100">
+                                <th class="border border-slate-300 p-2">ด้านที่ประเมิน</th>
+                                <th class="border border-slate-300 p-2">เครื่องมือวัดผล</th>
+                                <th class="border border-slate-300 p-2">เกณฑ์การผ่าน</th>
+                            </tr>
+                            <tr>
+                                <td class="border border-slate-300 p-2">1. ความรู้ (K)</td>
+                                <td class="border border-slate-300 p-2">แบบทดสอบก่อน-หลังเรียน</td>
+                                <td class="border border-slate-300 p-2">คะแนนร้อยละ 70 ขึ้นไป</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-slate-300 p-2">2. ทักษะ (S)</td>
+                                <td class="border border-slate-300 p-2">แบบประเมินใบงาน/การนำเสนอ</td>
+                                <td class="border border-slate-300 p-2">ระดับคุณภาพ "ดี" ขึ้นไป</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-slate-300 p-2">3. คุณลักษณะ (A)</td>
+                                <td class="border border-slate-300 p-2">แบบสังเกตพฤติกรรม (ความรับผิดชอบ/วินัย)</td>
+                                <td class="border border-slate-300 p-2">ระดับคุณภาพ "ผ่านเกณฑ์"</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="avoid-break mt-8">
+                        <h4 class="font-bold text-slate-800 border-l-4 border-slate-400 pl-2 mb-2">บันทึกหลังการสอน</h4>
+                        <div class="border border-slate-300 rounded-lg p-4 h-24 bg-slate-50">
+                            <span class="text-slate-400 italic">ผลการใช้แผน, ปัญหา/อุปสรรค, แนวทางแก้ไข...</span>
+                        </div>
+                    </div>
+
+                    <!-- ส่วนรับรองแผน -->
+                    <div class="avoid-break mt-10 pt-8 border-t-2 border-slate-200">
+                        <h4 class="font-bold text-center mb-8">การตรวจสอบและรับรองแผนการจัดการเรียนรู้</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center text-sm">
+                            <div>
+                                <p class="mb-10">ลงชื่อ .....................................................</p>
+                                <p>(.....................................................)</p>
+                                <p class="mt-1 text-slate-500">ครูผู้สอนประจำวิชา</p>
+                            </div>
+                            <div>
+                                <p class="mb-10">ลงชื่อ .....................................................</p>
+                                <p>(.....................................................)</p>
+                                <p class="mt-1 text-slate-500">หัวหน้าแผนกวิชา / หมวดวิชา</p>
+                            </div>
+                            <div>
+                                <p class="mb-10">ลงชื่อ .....................................................</p>
+                                <p>(.....................................................)</p>
+                                <p class="mt-1 text-slate-500">รองผู้อำนวยการฝ่ายวิชาการ</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('display-plan').innerHTML = planContent;
+
+            // ----------------------------------------------------
+            // Card 2: ใบความรู้ (พื้นฐาน -> ประยุกต์ -> วิเคราะห์ขั้นสูง)
+            // ----------------------------------------------------
+            const knowledgeContent = `
+                <div class="text-center mb-8 avoid-break">
+                    <h3 class="text-2xl font-bold">เอกสารใบความรู้: ${cleanTopic}</h3>
+                    <p class="text-slate-500 mt-1">รหัสวิชา: ${subjectCode} | รายวิชา: ${subjectName}</p>
+                </div>
+                
+                <div class="space-y-6">
+                    <!-- ระดับ 1: พื้นฐาน -->
+                    <div class="bg-blue-50/50 p-6 rounded-xl border border-blue-200 avoid-break">
+                        <h4 class="font-bold text-lg text-blue-800 mb-3 flex items-center gap-2 border-b border-blue-200 pb-2">
+                            <span class="bg-blue-600 text-white px-2 py-1 rounded text-xs">ตอนที่ 1</span> ภาคทฤษฎีและแนวคิดพื้นฐาน (Basic Concept)
+                        </h4>
+                        <p class="text-slate-700 indent-8 leading-relaxed mb-3"><b>${cleanTopic}</b> ไม่ใช่เพียงแค่ทฤษฎีในตำรา แต่คือ "กระบวนการจัดระเบียบความคิด" เพื่อใช้จัดการกับข้อมูล ทรัพยากร หรือปัญหาที่เกิดขึ้นในระบบงานต่างๆ โดยมีจุดมุ่งหมายเพื่อหาข้อเท็จจริง หรือแนวทางปฏิบัติที่ดีที่สุด (Best Practice) ลดความซ้ำซ้อน และป้องกันความเสียหายที่อาจเกิดขึ้น</p>
+                        <p class="text-slate-700 indent-8 leading-relaxed">องค์ประกอบรากฐานที่สำคัญประกอบด้วย <b>ข้อมูลนำเข้า (Input)</b>, <b>กระบวนการ (Process)</b>, และ <b>ผลผลิต (Output)</b> ซึ่งจำเป็นต้องมีระบบควบคุม (Control) และข้อมูลย้อนกลับ (Feedback) เพื่อให้ระบบมีความสมบูรณ์</p>
+                    </div>
+
+                    <!-- ระดับ 2: กลาง -->
+                    <div class="bg-green-50/50 p-6 rounded-xl border border-green-200 avoid-break">
+                        <h4 class="font-bold text-lg text-green-800 mb-3 flex items-center gap-2 border-b border-green-200 pb-2">
+                            <span class="bg-green-600 text-white px-2 py-1 rounded text-xs">ตอนที่ 2</span> ขั้นตอนและการประยุกต์ใช้งาน (Practical Application)
+                        </h4>
+                        <p class="text-slate-700 mb-3 indent-8">เมื่อนำทฤษฎีมาปรับใช้ในบริบทการทำงานจริง การดำเนินงานจะต้องผ่านขั้นตอนเชิงระบบ ดังนี้:</p>
+                        <ul class="list-decimal pl-10 text-slate-700 space-y-2 mb-3">
+                            <li><b>การระบุปัญหาและกำหนดขอบเขต:</b> ต้องทราบอย่างชัดเจนว่ากำลังแก้ปัญหาอะไร เพื่อไม่ให้หลงทาง</li>
+                            <li><b>การรวบรวมข้อมูลและตั้งสมมติฐาน:</b> ค้นหาข้อมูลเชิงประจักษ์ (Empirical Data) และคาดการณ์แนวโน้ม</li>
+                            <li><b>การลงมือปฏิบัติ (Execution) ตามแบบแผน:</b> ดำเนินการตามเครื่องมือ หรือขั้นตอนมาตรฐานที่กำหนดไว้</li>
+                            <li><b>การประเมินและสรุปผล:</b> นำผลลัพธ์ที่ได้มาเทียบกับเกณฑ์ (Benchmark)</li>
+                        </ul>
+                        <p class="text-slate-700 indent-8 text-sm italic">* ตัวอย่างการใช้งาน: การนำวงจร PDCA (Plan-Do-Check-Act) มาบูรณาการร่วมกับกระบวนการนี้ เพื่อควบคุมคุณภาพงานในสายการผลิต</p>
+                    </div>
+
+                    <!-- ระดับ 3: สูง -->
+                    <div class="bg-orange-50/50 p-6 rounded-xl border border-orange-200 avoid-break">
+                        <h4 class="font-bold text-lg text-orange-800 mb-3 flex items-center gap-2 border-b border-orange-200 pb-2">
+                            <span class="bg-orange-600 text-white px-2 py-1 rounded text-xs">ตอนที่ 3</span> การวิเคราะห์เชิงซ้อนและการพัฒนาระบบ (Advanced Analysis)
+                        </h4>
+                        <p class="text-slate-700 indent-8 leading-relaxed mb-3">ในสภาวะที่เกิด <b>ปัญหาวิกฤต (Critical Issue)</b> หรือมีตัวแปรแทรกซ้อนจำนวนมาก ทักษะขั้นสูงที่ผู้ปฏิบัติงานต้องมีคือ การทำ <b>Root Cause Analysis (RCA)</b> เช่น การใช้ผังภูมิก้างปลา (Fishbone Diagram) หรือหลักการ 5-Whys เพื่อเจาะลึกลงไปถึงแก่นแท้ของปัญหา</p>
+                        <p class="text-slate-700 indent-8 leading-relaxed">นอกจากนี้ การออกแบบผังงานใหม่ (Workflow Re-design) โดยอาศัยเทคโนโลยีดิจิทัลเข้ามาช่วยจัดเก็บข้อมูล (Data Management) จะนำไปสู่กระบวนการตัดสินใจบนฐานข้อมูล (Data-Driven Decision Making) ซึ่งเป็นทักษะที่สถานประกอบการในยุคปัจจุบันต้องการอย่างยิ่ง</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('display-knowledge').innerHTML = knowledgeContent;
+
+            // ----------------------------------------------------
+            // Card 3: ใบงาน (10 ข้อ เป๊ะๆ พื้นฐาน->ยาก)
+            // ----------------------------------------------------
+            const worksheetContent = `
+                <div class="text-center mb-6 avoid-break">
+                    <h3 class="text-2xl font-bold">แบบทดสอบและประเมินผลปฏิบัติงาน</h3>
+                    <p class="text-slate-500 mt-1">เรื่อง: ${cleanTopic}</p>
+                </div>
+                <div class="bg-slate-100 p-4 rounded-lg mb-6 text-slate-700 text-sm border-l-4 border-slate-400 avoid-break">
+                    <b>คำชี้แจง:</b> ให้นักศึกษาตอบคำถามต่อไปนี้ให้สมบูรณ์ โดยแบบทดสอบถูกแบ่งออกเป็น 3 ระดับ รวมทั้งสิ้น 10 ข้อ
+                </div>
+
+                <div class="space-y-6 text-slate-800">
+                    <!-- Basic (3 ข้อ) -->
+                    <div class="pl-4 border-l-2 border-blue-400 avoid-break">
+                        <div class="bg-blue-50 inline-block px-3 py-1 rounded font-bold text-blue-700 text-sm mb-3">ส่วนที่ 1: ความรู้ความจำและความเข้าใจ (3 ข้อ)</div>
+                        <div class="space-y-5">
+                            <div><p class="font-medium">1. จงอธิบายความหมายของ "${cleanTopic}" ตามหลักการที่ได้ศึกษาในตอนที่ 1?</p><div class="border-b border-dotted border-slate-400 h-8"></div><div class="border-b border-dotted border-slate-400 h-8"></div></div>
+                            <div><p class="font-medium">2. องค์ประกอบรากฐาน 3 ประการ (Input, Process, Output) มีความเชื่อมโยงกันอย่างไร?</p><div class="border-b border-dotted border-slate-400 h-8"></div><div class="border-b border-dotted border-slate-400 h-8"></div></div>
+                            <div><p class="font-medium">3. ข้อมูลย้อนกลับ (Feedback) มีความสำคัญอย่างไรต่อความสมบูรณ์ของระบบงาน?</p><div class="border-b border-dotted border-slate-400 h-8"></div><div class="border-b border-dotted border-slate-400 h-8"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Intermediate (4 ข้อ) -->
+                    <div class="pl-4 border-l-2 border-green-400 mt-8 avoid-break">
+                        <div class="bg-green-50 inline-block px-3 py-1 rounded font-bold text-green-700 text-sm mb-3">ส่วนที่ 2: การประยุกต์ใช้และการวิเคราะห์ (4 ข้อ)</div>
+                        <div class="space-y-5">
+                            <div><p class="font-medium">4. หากนักศึกษาข้ามขั้นตอน "การระบุปัญหาและกำหนดขอบเขต" จะส่งผลเสียต่องานในขั้นตอนถัดไปอย่างไร?</p><div class="border-b border-dotted border-slate-400 h-8"></div></div>
+                            <div><p class="font-medium">5. จงยกตัวอย่างสถานการณ์ในชีวิตประจำวัน 1 เหตุการณ์ ที่สามารถนำวงจร PDCA เข้าไปช่วยแก้ปัญหาได้ พร้อมอธิบายสั้นๆ?</p><div class="border-b border-dotted border-slate-400 h-8"></div><div class="border-b border-dotted border-slate-400 h-8"></div></div>
+                            <div><p class="font-medium">6. เปรียบเทียบข้อดีและข้อเสีย ระหว่างการทำงานที่มีการตั้งสมมติฐานล่วงหน้า กับ การทำงานแบบแก้ปัญหาเฉพาะหน้า?</p><div class="border-b border-dotted border-slate-400 h-8"></div><div class="border-b border-dotted border-slate-400 h-8"></div></div>
+                            <div><p class="font-medium">7. เครื่องมือประเมินผล (Benchmark) ช่วยให้กระบวนการตัดสินใจมีความน่าเชื่อถือมากขึ้นได้อย่างไร?</p><div class="border-b border-dotted border-slate-400 h-8"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced (3 ข้อ) -->
+                    <div class="pl-4 border-l-2 border-orange-400 mt-8 avoid-break">
+                        <div class="bg-orange-50 inline-block px-3 py-1 rounded font-bold text-orange-700 text-sm mb-3">ส่วนที่ 3: การสังเคราะห์ ประเมินค่า และแก้ปัญหาซับซ้อน (3 ข้อ)</div>
+                        <div class="space-y-5">
+                            <div><p class="font-medium">8. <b>วิเคราะห์สถานการณ์:</b> หากระบบงานในองค์กรเกิดความผิดพลาดซ้ำๆ ที่จุดเดิมนานกว่า 3 เดือน นักศึกษาจะเลือกใช้เครื่องมือใด (เช่น Fishbone, 5-Whys) ในการหาต้นตอของปัญหา และเพราะเหตุใด?</p><div class="border-b border-dotted border-slate-400 h-8"></div><div class="border-b border-dotted border-slate-400 h-8"></div></div>
+                            <div><p class="font-medium">9. <b>ออกแบบ (Design):</b> จากปัญหาในข้อ 8 ให้ออกแบบผังงาน (Workflow) คร่าวๆ 3-4 ขั้นตอน เพื่อป้องกันไม่ให้ปัญหานั้นเกิดขึ้นซ้ำอีก</p><div class="border border-slate-300 h-28 bg-slate-50 mt-2 rounded"></div></div>
+                            <div><p class="font-medium">10. <b>ประเมินและต่อยอด:</b> การตัดสินใจบนฐานข้อมูล (Data-Driven Decision Making) จะมีส่วนช่วยยกระดับทักษะในรายวิชา ${subjectName} ให้ก้าวทันเทคโนโลยีในอนาคตได้อย่างไร?</p><div class="border-b border-dotted border-slate-400 h-8"></div><div class="border-b border-dotted border-slate-400 h-8"></div></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('display-worksheet').innerHTML = worksheetContent;
+
+            // ----------------------------------------------------
+            // Card 4: QR Code
+            // ----------------------------------------------------
+            document.getElementById('display-qrcode-large').innerHTML = "";
+            new QRCode(document.getElementById("display-qrcode-large"), {
+                text: `https://lms.school.ac.th/course/${subjectCode}/unit1`,
+                width: 220, height: 220,
+                colorDark : "#0f172a", colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+
+            // ----------------------------------------------------
+            // Prepare Export Area (Print/PDF/Word)
+            // ----------------------------------------------------
+            const exportHTML = `
+                <!-- ส่วนที่ 1: แผนการสอน -->
+                <div class="mb-10 relative">
+                    <div class="absolute top-0 right-0 p-2 border border-slate-300 rounded text-center w-28 bg-white">
+                        <div id="export-qr" class="mb-1 mx-auto w-[70px] h-[70px]"></div>
+                        <span class="text-[10px] text-slate-600 font-bold">สแกนสื่อการสอน</span>
+                    </div>
+                    <div class="text-center pr-32 mb-8">
+                        <h2 class="text-2xl font-bold text-black mb-1">แผนการจัดการเรียนรู้มุ่งเน้นสมรรถนะ</h2>
+                        <h3 class="text-lg text-slate-700">รายวิชา: ${subjectCode} ${subjectName}</h3>
+                    </div>
+                    ${planContent}
+                </div>
+
+                <!-- ส่วนที่ 2: ใบความรู้ -->
+                <div class="print-break-before pt-8">
+                    ${knowledgeContent.replace(/bg-[a-z]+-50\/50/g, 'bg-white').replace(/border-[a-z]+-[0-9]+/g, 'border-slate-300').replace(/text-[a-z]+-[0-9]+/g, 'text-black').replace(/bg-[a-z]+-[0-9]+/g, 'bg-slate-200 text-black')}
+                </div>
+
+                <!-- ส่วนที่ 3: ใบงาน -->
+                <div class="print-break-before pt-8">
+                    ${worksheetContent.replace(/bg-[a-z]+-50/g, 'bg-slate-100').replace(/border-[a-z]+-[0-9]+/g, 'border-slate-400').replace(/text-[a-z]+-[0-9]+/g, 'text-black')}
+                </div>
+            `;
+            document.getElementById('exportableArea').innerHTML = exportHTML;
+            
+            // Generate QR in export area
+            setTimeout(() => {
+                new QRCode(document.getElementById("export-qr"), {
+                    text: `https://lms.school.ac.th/course/${subjectCode}/unit1`,
+                    width: 70, height: 70,
+                    colorDark : "#000000", colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.L
+                });
+            }, 100);
+
+            // Default show card 1
+            showCard(1);
+        }
+
+        function showCard(index) {
+            for(let i=1; i<=5; i++) {
+                document.getElementById(`card-${i}`).classList.add('hidden');
+                document.getElementById(`tab-${i}`).classList.remove('active');
+            }
+            document.getElementById(`card-${index}`).classList.remove('hidden');
+            document.getElementById(`tab-${index}`).classList.add('active');
+        }
+
+        function exportPDF() {
+            const element = document.getElementById('exportableArea');
+            element.style.display = 'block'; 
+            const opt = {
+                margin:       [15, 15, 15, 15],
+                filename:     `แผนการสอน_${document.getElementById('subjectCode').value}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save().then(() => {
+                element.style.display = 'none'; 
+            });
+        }
+
+        function exportWord() {
+            const element = document.getElementById('exportableArea');
+            const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML to Word</title><style>body { font-family: 'Sarabun', 'TH Sarabun PSK', sans-serif; font-size: 16pt; } h4 { page-break-after: avoid; } .avoid-break { page-break-inside: avoid; }</style></head><body>";
+            const footer = "</body></html>";
+            
+            // Clean up UI classes for Word format
+            let htmlContext = element.innerHTML
+                .replace(/border-dotted/g, "border-bottom: 1px dotted #000")
+                .replace(/h-8/g, "height: 30px")
+                .replace(/border-b/g, "");
+                
+            const sourceHTML = header + htmlContext + footer;
+            const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+            const fileDownload = document.createElement("a");
+            
+            document.body.appendChild(fileDownload);
+            fileDownload.href = source;
+            fileDownload.download = `แผนการสอน_${document.getElementById('subjectCode').value}.doc`;
+            fileDownload.click();
+            document.body.removeChild(fileDownload);
+        }
+    </script>
+</body>
+</html>
